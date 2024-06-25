@@ -2,16 +2,9 @@ package br.edu.ufape.lmts.sementes.facade;
 
 import java.io.File;
 import java.io.InputStream;
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import br.edu.ufape.lmts.sementes.controller.dto.request.TabelaBancoSementesRequest;
-import br.edu.ufape.lmts.sementes.service.exception.AuthenticationException;
-import br.edu.ufape.lmts.sementes.service.exception.AuthorizationException;
-import br.edu.ufape.lmts.sementes.service.exception.CustomDatabaseException;
-import br.edu.ufape.lmts.sementes.service.exception.InvalidItemStateException;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -20,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import br.edu.ufape.lmts.sementes.auth.UserDetailsServiceImpl;
+import br.edu.ufape.lmts.sementes.controller.dto.request.TabelaBancoSementesRequest;
 import br.edu.ufape.lmts.sementes.enums.TipoUsuario;
 import br.edu.ufape.lmts.sementes.model.Admin;
 import br.edu.ufape.lmts.sementes.model.Agricultor;
@@ -85,8 +79,12 @@ import br.edu.ufape.lmts.sementes.service.UsoOcupacaoTerraService;
 import br.edu.ufape.lmts.sementes.service.UsuarioServiceInterface;
 import br.edu.ufape.lmts.sementes.service.infraestruturaHidricaService;
 import br.edu.ufape.lmts.sementes.service.sementeDoencaService;
+import br.edu.ufape.lmts.sementes.service.exception.AuthenticationException;
+import br.edu.ufape.lmts.sementes.service.exception.AuthorizationException;
+import br.edu.ufape.lmts.sementes.service.exception.CustomDatabaseException;
 import br.edu.ufape.lmts.sementes.service.exception.EmailExistsException;
-import br.edu.ufape.lmts.sementes.service.exception.ObjectNotFoundException;
+import br.edu.ufape.lmts.sementes.service.exception.InvalidItemStateException;
+import jakarta.transaction.Transactional;
 
 @Service
 public class Facade {
@@ -160,6 +158,22 @@ public class Facade {
 	public Usuario findUsuarioByEmail(String email) {
 		return usuarioService.findUsuarioByEmail(email);
 	}
+	
+	public Usuario findUsuarioByCpf(String cpf) {
+		return usuarioService.findUsuarioByCpf(cpf);
+	}
+	
+	public boolean UsuarioEmailExists(String email) {
+		return usuarioService.emailExists(email);
+	}
+	
+	public boolean UsuarioCpfExists(String cpf) {
+		return usuarioService.cpfExists(cpf);
+	}
+	
+	public boolean UsuarioContatoExists(String contato) {
+		return usuarioService.contatoExists(contato);
+	}
 
 	public List<Usuario> getAllUsuario() {
 		return usuarioService.getAllUsuario();
@@ -178,7 +192,7 @@ public class Facade {
 	}
 	
 	public Usuario findLoggedUser() {
-		Usuario logged = findUsuarioByEmail(userDetailsServiceImpl.authenticated().getEmail());
+		Usuario logged = findUsuarioByCpf(userDetailsServiceImpl.authenticated().getCpf());
 		if(logged == null)
 			throw new AuthenticationException("Usuário não autenticado");
 		return logged;
@@ -836,31 +850,12 @@ public class Facade {
 	private SementesService sementesService;
 
 	public Sementes saveSementes(Sementes newInstance) {
-		saveResponsavelTecnicoToSementes(newInstance);
 		newInstance.setFinalidades(newInstance.getFinalidades().stream().map(x -> saveFinalidade(x)).toList());
-		newInstance.setCultura(saveCultura(newInstance.getCultura()));
 		return sementesService.saveSementes(newInstance);
 	}
 
-	private void saveResponsavelTecnicoToSementes(Sementes sementes) {
-		try {
-			String cpf = sementes.getResponsavelTecnico().getCpf();
-			ResponsavelTecnico responsavelTecnico;
-			responsavelTecnico = findResponsavelTecnicoByCpf(cpf);
-			sementes.setResponsavelTecnico(responsavelTecnico);
-		} catch (ObjectNotFoundException e) {
-			sementes.setResponsavelTecnico(saveResponsavelTecnico(sementes.getResponsavelTecnico()));
-		}
-	}
-
 	public Sementes updateSementes(Sementes transientObject) {
-		saveResponsavelTecnicoToSementes(transientObject);
-		transientObject.setFinalidades(transientObject.getFinalidades().stream().map(x -> saveFinalidade(x)).toList());
-		// transientObject.setCultura(saveCultura(transientObject.getCultura()));
-		System.out.println(transientObject.getCultura());
-		System.out.println(transientObject);
 		return sementesService.updateSementes(transientObject);
-
 	}
 
 	public Sementes findSementesById(long id) {
@@ -1106,9 +1101,8 @@ public class Facade {
 	private AgricultorService agricultorService;
 	
 	private Agricultor saveAgricultorA(Agricultor newInstance) throws EmailExistsException {
-		newInstance.setAtividadeRural(saveAtividadesRuraisFromAgricultor(newInstance.getAtividadeRural()));
 		bancoSementesService.findBancoSementesById(newInstance.getBancoSementes().getId());
-		usuarioService.saveUsuario(newInstance);
+		this.saveUsuario(newInstance);
 		return agricultorService.saveAgricultor(newInstance);
 	}
 
@@ -1144,8 +1138,7 @@ public class Facade {
 	}
 
 	public Agricultor updateAgricultor(Agricultor transientObject) {
-		//transientObject.setAtividadeRural(saveAtividadesRuraisFromAgricultor(transientObject.getAtividadeRural()));
-		//bancoSementesService.findBancoSementesById(transientObject.getBancoSementes().getId());
+		this.updateUsuario(transientObject);
 		return agricultorService.updateAgricultor(transientObject);
 	}
 

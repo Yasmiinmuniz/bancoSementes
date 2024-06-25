@@ -7,9 +7,9 @@ export default function DadosSementes({ formik, editar }) {
     const [outraFinalidade, setOutraFinalidade] = useState("");
     const [isOutraFinalidadeSelecionada, setIsOutraFinalidadeSelecionada] = useState(false);
 
-
-    const finalidadeSementeArray = Array.isArray(values.finalidadeSemente) ? values.finalidadeSemente : [];
-
+    const getObjetosRegiao= (objetos) => {
+        return Array.isArray(objetos) ? objetos.map(objeto => objeto.regiao).join(', ') : '';
+    };
 
     const finalidades = [
         { name: "etilica", label: "Bebídas Etílicas" },
@@ -24,7 +24,6 @@ export default function DadosSementes({ formik, editar }) {
         let novasFinalidades = [...values.finalidades];
 
         if (isChecked) {
-            // Para "Outra", verifica se já existe algum valor customizado antes de adicionar
             if (finalidade === 'outra') {
                 setIsOutraFinalidadeSelecionada(true);
                 if (outraFinalidade && !novasFinalidades.includes(outraFinalidade)) {
@@ -34,13 +33,11 @@ export default function DadosSementes({ formik, editar }) {
                 novasFinalidades.push(finalidade);
             }
         } else {
-            // Se desmarcado, remove a atividade ou a última atividade customizada "Outra"
             if (finalidade === 'outra') {
                 setIsOutraFinalidadeSelecionada(false);
-                // Remove a última entrada de "Outra" se houver
                 if (outraFinalidade) {
                     novasFinalidades = novasFinalidades.filter(item => item !== outraFinalidade);
-                    setOutraFinalidade(''); // Limpa o valor de outra atividade após remoção
+                    setOutraFinalidade('');
                 }
             } else {
                 novasFinalidades = novasFinalidades.filter(item => item !== finalidade);
@@ -54,12 +51,18 @@ export default function DadosSementes({ formik, editar }) {
         const novoValor = e.target.value;
         setOutraFinalidade(novoValor);
 
-        // Atualiza imediatamente a lista de atividades se já estiver na lista
         if (values.finalidades.includes(outraFinalidade) || isOutraFinalidadeSelecionada) {
             const novasFinalidades = values.finalidades.filter(item => item !== outraFinalidade);
             novasFinalidades.push(novoValor);
             setFieldValue('finalidades', novasFinalidades);
         }
+    };
+
+    const getFinalidadesString = () => {
+        return finalidades
+            .filter(finalidade => values[finalidade.name] || (finalidade.name === 'outra' && values.outraFinalidade))
+            .map(finalidade => finalidade.name === 'outra' ? values.outraFinalidade : finalidade.label)
+            .join(', ');
     };
 
     return (
@@ -121,7 +124,7 @@ export default function DadosSementes({ formik, editar }) {
                                 name="dominioPublico"
                                 placeholder="Não informado"
                                 onBlur={formik.handleBlur}
-                                value={formik.values.dominioPublico}
+                                value={formik.values.dominioPublico ? 'Sim' : 'Não'}
                                 disabled
                             />
                         </div>
@@ -132,7 +135,7 @@ export default function DadosSementes({ formik, editar }) {
                                 name="polinizaacaoAbertaMelhorada"
                                 placeholder="Não informado"
                                 onBlur={formik.handleBlur}
-                                value={formik.values.polinizaacaoAbertaMelhorada}
+                                value={formik.values.polinizaacaoAbertaMelhorada ? 'Sim' : 'Não'}
                                 disabled
                             />
                         </div>
@@ -143,7 +146,7 @@ export default function DadosSementes({ formik, editar }) {
                                 name="regioesAdaptacaoCultivo"
                                 placeholder="Não informado"
                                 onBlur={formik.handleBlur}
-                                value={formik.values.regioesAdaptacaoCultivo}
+                                value={getObjetosRegiao(formik.values.regioesAdaptacaoCultivo)}
                                 disabled
                             />
                         </div>
@@ -151,7 +154,7 @@ export default function DadosSementes({ formik, editar }) {
                             <label htmlFor="altitudeMinima">Altitude Mínima</label>
                             <input
                                 className={styles.container__ContainerForm_form_input}
-                                name="nome"
+                                name="altitudeMinima"
                                 placeholder="Não informado"
                                 onBlur={formik.handleBlur}
                                 value={formik.values.altitudeMinima}
@@ -171,8 +174,8 @@ export default function DadosSementes({ formik, editar }) {
                         </div>
                         <div>
                             <label htmlFor="doencas">Resistência à Doenças</label>
-                            <input
-                                className={styles.container__ContainerForm_form_input}
+                            <textarea
+                                className={styles.container__ContainerForm_form_textareaDetalhamento}
                                 name="doencas"
                                 placeholder="Não informado"
                                 onBlur={formik.handleBlur}
@@ -182,8 +185,8 @@ export default function DadosSementes({ formik, editar }) {
                         </div>
                         <div>
                             <label htmlFor="pragas">Resistência à Pragas</label>
-                            <input
-                                className={styles.container__ContainerForm_form_input}
+                            <textarea
+                                className={styles.container__ContainerForm_form_textareaDetalhamento}
                                 name="pragas"
                                 placeholder="Não informado"
                                 onBlur={formik.handleBlur}
@@ -193,12 +196,12 @@ export default function DadosSementes({ formik, editar }) {
                         </div>
                         <div>
                             <label htmlFor="finalidades">Finalidade </label>
-                            <input
-                                className={styles.container__ContainerForm_form_input}
+                            <textarea
+                                className={styles.container__ContainerForm_form_textareaDetalhamento}
                                 name="finalidades"
                                 placeholder="Não informado"
                                 onBlur={formik.handleBlur}
-                                value={formik.values.finalidades}
+                                value={getFinalidadesString()}
                                 disabled
                             />
                         </div>
