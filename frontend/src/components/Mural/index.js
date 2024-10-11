@@ -9,9 +9,13 @@ import HeaderNavegacao from '../HeaderNavegacao';
 import { getAllPublicacoes } from '@/api/mural/getAllPublicacoes';
 import { getArquivo } from '@/api/arquivos/getArquivo';
 import { useMutation } from 'react-query';
-import { getCoordenadorEmail } from '@/api/usuarios/coordenador/getCoordenadorEmail';
+import { getCoordenadorCpf } from '@/api/usuarios/coordenador/getCoordenadorCpf';
 
 function parseDate(dateString) {
+    if (!dateString || !dateString.includes(' ')) {
+        console.error('Formato de data inválido:', dateString);
+        return new Date(); // Retorna a data atual como fallback
+    }
     const [datePart, timePart] = dateString.split(' ');
     const [day, month, year] = datePart.split('-').map(Number);
     const [hours, minutes, seconds] = timePart.split(':').map(Number);
@@ -27,7 +31,7 @@ export default function Mural({ diretorioAnterior, diretorioAtual, hrefAnterior 
     const [imageUrls, setImageUrls] = useState({});
     const [usuario, setUsuario] = useState([]);
 
-    const mutationGetFuncionario = useMutation(funcionarioEmail => getCoordenadorEmail(funcionarioEmail), {
+    const mutationGetFuncionario = useMutation(coppabacsCpf => getCoordenadorCpf(coppabacsCpf), {
         onSuccess: (res) => {
             setUsuario(res.data);
             console.log("Usuário:", res.data);
@@ -51,8 +55,8 @@ export default function Mural({ diretorioAnterior, diretorioAtual, hrefAnterior 
 
     useEffect(() => {
         if(role === "ROLE_COPPABACS") {
-            const funcionarioEmail = getStorageItem("userLogin");
-            mutationGetFuncionario.mutate(funcionarioEmail);
+            const coppabacsCpf = getStorageItem("userLogin");
+            mutationGetFuncionario.mutate(coppabacsCpf);
         }
         mutate();
     }, []);

@@ -8,7 +8,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -29,7 +28,6 @@ import br.edu.ufape.lmts.sementes.service.exception.EmailExistsException;
 import br.edu.ufape.lmts.sementes.service.exception.ObjectNotFoundException;
 import jakarta.validation.Valid;
 
-@CrossOrigin(origins = "http://localhost:3000/")
 @RestController
 @RequestMapping("/api/v1/")
 public class AdminController {
@@ -62,6 +60,11 @@ public class AdminController {
 	@GetMapping("admin/{id}")
 	public AdminResponse getAdminById(@PathVariable Long id) {
 		return new AdminResponse(facade.findAdminById(id));
+	}
+	
+	@GetMapping("admin/cpf/{cpf}")
+	public AdminResponse getAdminByCpf(@PathVariable String cpf) {
+		return new AdminResponse(facade.findAdminByCpf(cpf));
 	}
 
 	@PatchMapping("admin/{id}")

@@ -5,6 +5,9 @@ import { telefoneMask } from "@/utils/Masks/telefoneMask";
 export default function DadosBanco({ formik, editar }) {
   return (
     <>
+      <div className={style.container__header_title}>
+        <h1>Dados do Banco</h1>
+      </div>
 
       {editar === false ? (
         <>
@@ -37,6 +40,17 @@ export default function DadosBanco({ formik, editar }) {
                 placeholder="Não informado"
                 onBlur={formik.handleBlur}
                 value={formik.values.contato}
+                disabled
+              />
+            </div>
+            <div>
+              <label htmlFor="anoFundacao">Ano de Fundação </label>
+              <input
+                className={style.container__ContainerForm_form_input}
+                type="date"
+                placeholder="Não informado"
+                onBlur={formik.handleBlur}
+                value={formik.values.anoFundacao}
                 disabled
               />
             </div>
@@ -79,6 +93,24 @@ export default function DadosBanco({ formik, editar }) {
               />
               {formik.touched.responsavel && formik.errors.responsavel ? (
                 <span className={style.form__error}>{formik.errors.responsavel}</span>
+              ) : null}
+            </div>
+            <div>
+
+              <label htmlFor="contato">Telefone</label>
+              <input
+                className={style.container__ContainerForm_form_halfContainer_input}
+                id="contato"
+                name="contato"
+                placeholder="Insira seu contato"
+                onChange={(e) => {
+                  formik.setFieldValue("contato", telefoneMask(e.target.value));
+                }}
+                onBlur={formik.handleBlur}
+                value={formik.values.contato}
+              />
+              {formik.touched.contato && formik.errors.contato ? (
+                <span className={style.form__error}>{formik.errors.contato}</span>
               ) : null}
             </div>
             <div>

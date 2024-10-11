@@ -12,6 +12,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import br.edu.ufape.lmts.sementes.auth.AuthUser;
+import br.edu.ufape.lmts.sementes.auth.TokenService;
 import br.edu.ufape.lmts.sementes.auth.UserDetailsServiceImpl;
 import br.edu.ufape.lmts.sementes.controller.dto.request.TabelaBancoSementesRequest;
 import br.edu.ufape.lmts.sementes.enums.TipoUsuario;
@@ -40,6 +42,7 @@ import br.edu.ufape.lmts.sementes.model.RetiradaUsuario;
 import br.edu.ufape.lmts.sementes.model.SementePraga;
 import br.edu.ufape.lmts.sementes.model.Sementes;
 import br.edu.ufape.lmts.sementes.model.TabelaBancoSementes;
+import br.edu.ufape.lmts.sementes.model.TabelaPerguntaUsuario;
 import br.edu.ufape.lmts.sementes.model.ToleranciaAdversidades;
 import br.edu.ufape.lmts.sementes.model.TransacaoGenerica;
 import br.edu.ufape.lmts.sementes.model.UsoOcupacaoTerra;
@@ -134,6 +137,8 @@ public class Facade {
 	public Usuario saveUsuario(Usuario newInstance) {
 		try {
 			newInstance.setSenha(passwordEncoder.encode(newInstance.getSenha()));
+			TabelaPerguntaUsuario pergunta = newInstance.getTabelaPerguntaUsuario();
+			pergunta.setResposta(passwordEncoder.encode(pergunta.getResposta()));
 			return usuarioService.saveUsuario(newInstance);
 		} catch (Exception e) {
 			throw new RuntimeException("Erro ao salvar o usuário", e);
@@ -147,6 +152,14 @@ public class Facade {
 		} else {
 			Usuario usuario = findUsuarioById(transientObject.getId());
 			transientObject.setSenha(usuario.getSenha());
+		}
+		
+		if(transientObject.getTabelaPerguntaUsuario().getResposta() != null) {
+			TabelaPerguntaUsuario pergunta = transientObject.getTabelaPerguntaUsuario();
+			pergunta.setResposta(passwordEncoder.encode(pergunta.getResposta()));
+		} else {
+			Usuario usuario = findUsuarioById(transientObject.getId());
+			transientObject.setTabelaPerguntaUsuario(usuario.getTabelaPerguntaUsuario());
 		}
 		return usuarioService.updateUsuario(transientObject);
 	}
@@ -197,7 +210,43 @@ public class Facade {
 			throw new AuthenticationException("Usuário não autenticado");
 		return logged;
 	}
+	
+	
+	
+	//Auth--------------------------------------------------------------
+	@Autowired
+	private TokenService tokenService;
+	
+	public String generateRecoveryPasswordToken(TabelaPerguntaUsuario perguntaUsuario, String cpf) {
+		Usuario usuario = findUsuarioByCpf(cpf);
+		if(validateResposta(usuario.getTabelaPerguntaUsuario(), perguntaUsuario)) {
+			return tokenService.generateRecoveryPasswordToken(usuario.getCpf(), usuario.getTabelaPerguntaUsuario().getPergunta().getPergunta());
+		} else {
+			throw new AuthenticationException("Resposta e/ou pergunta incorreta/s");
+		}
+	}
+	
+	private boolean validateResposta(TabelaPerguntaUsuario respostaEncriptada, TabelaPerguntaUsuario resposta) {
+		boolean validate;
+		validate = resposta.getPergunta().equals(respostaEncriptada.getPergunta());
+		validate &= passwordEncoder.matches(resposta.getResposta(), respostaEncriptada.getResposta());
+		return validate;
+	}
+	
+	public String generateLoginToken(AuthUser usuario) {
+		return tokenService.generateLoginToken(usuario);
+	}
+	
+	public String recoverCpfByToken(String token) {
+		return tokenService.recoverCpfByToken(token);
+	}
 
+	public void saveRecoveredPassword(String senha, String cpf) {
+		Usuario usuario = usuarioService.findUsuarioByCpf(cpf);
+		usuario.setSenha(passwordEncoder.encode(senha));
+		usuarioService.updateUsuario(usuario);
+	}
+	
 	// Coppabacs--------------------------------------------------------------
 	@Autowired
 	private CoppabacsService coppabacsService;
@@ -207,11 +256,12 @@ public class Facade {
 	}
 
 	public Coppabacs saveCoppabacs(Coppabacs newInstance) throws EmailExistsException {
-		usuarioService.saveUsuario(newInstance);
+		this.saveUsuario(newInstance);
 		return coppabacsService.saveCoppabacs(newInstance);
 	}
 
 	public Coppabacs updateCoppabacs(Coppabacs transientObject) {
+		this.updateUsuario(transientObject);
 		return coppabacsService.updateCoppabacs(transientObject);
 	}
 
@@ -220,6 +270,9 @@ public class Facade {
 	}
 	public Coppabacs findCoppabacsByEmail(String email) {
 		return coppabacsService.findCoppabacsByEmail(email);
+	}
+	public Coppabacs findCoppabacsByCpf(String cpf) {
+		return coppabacsService.findCoppabacsByCpf(cpf);
 	}
 	public Page<Coppabacs> findPageCoppabacs(Pageable pageRequest) {
 		return coppabacsService.findPageCoppabacs(pageRequest);
@@ -590,13 +643,13 @@ public class Facade {
 
 		bancoSementesService.findBancoSementesById(newInstance.getBancoSementes().getId());
 
-		usuarioService.saveUsuario(newInstance);
+		this.saveUsuario(newInstance);
 
 		return gerenteService.saveGerente(newInstance);
 	}
 
 	public Gerente updateGerente(Gerente transientObject) {
-		usuarioService.updateUsuario(transientObject);
+		this.updateUsuario(transientObject);
 		return gerenteService.updateGerente(transientObject);
 	}
 
@@ -605,6 +658,9 @@ public class Facade {
 	}
 	public Gerente findGerenteByEmail(String email) {
 		return gerenteService.findGerenteByEmail(email);
+	}
+	public Gerente findGerenteByCpf(String cpf) {
+		return gerenteService.findGerenteByCpf(cpf);
 	}
 	public List<Gerente> getAllGerente() {
 		return gerenteService.getAllGerente();
@@ -1068,16 +1124,21 @@ public class Facade {
 	private AdminService adminService;
 
 	public Admin saveAdmin(Admin newInstance) throws EmailExistsException {
-		usuarioService.saveUsuario(newInstance);
+		this.saveUsuario(newInstance);
 		return adminService.saveAdmin(newInstance);
 	}
 
 	public Admin updateAdmin(Admin oldObject) {
+		this.updateUsuario(oldObject);
 		return adminService.updateAdmin(oldObject);
 	}
 
 	public Admin findAdminById(Long id) {
 		return adminService.findAdminById(id);
+	}
+	
+	public Usuario findAdminByCpf(String cpf) {
+		return adminService.findAdminByCpf(cpf);
 	}
 
 	public List<Admin> getAllAdmin() {
@@ -1147,6 +1208,9 @@ public class Facade {
 	}
 	public Agricultor findAgricultorByEmail(String email) {
 		return agricultorService.findAgricultorByEmail(email);
+	}
+	public Agricultor findAgricultorByCpf(String cpf) {
+		return agricultorService.findAgricultorByCpf(cpf);
 	}
 	public List<Agricultor> getAllAgricultor() {
 		return agricultorService.getAllByRole(TipoUsuario.AGRICULTOR);
